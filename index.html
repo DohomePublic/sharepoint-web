@@ -1,352 +1,248 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>KYC Dashboard - Live SharePoint</title>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<style>
-:root{
-  --pri:#1565c0;--pri2:#1976d2;--acc:#0288d1;
-  --bg:#f0f4f8;--card:#fff;--border:#d0dce9;
-  --txt:#1a2636;--sub:#546e7a;
-  --ok:#2e7d32;--warn:#f57f17;--rej:#c62828;--pend:#6a1b9a;
-  --tag-bg:#e3f2fd;--tag-br:#90caf9;
-}
-*{box-sizing:border-box;margin:0;padding:0;font-family:Sarabun,sans-serif}
-body{background:var(--bg);color:var(--txt);min-height:100vh}
-#topbar{
-  background:var(--pri);color:#fff;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:10px 20px;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:100;
-  box-shadow:0 2px 8px #0004;
-}
-#topbar h1{font-size:1.15rem;font-weight:700}
-#topbar .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.btn{padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;font-weight:600;transition:.2s}
-.btn-white{background:#fff;color:var(--pri)}.btn-white:hover{background:#e3f2fd}
-.btn-outline{background:transparent;color:#fff;border:1.5px solid #fff8}.btn-outline:hover{background:#ffffff22}
-.btn-sm{padding:4px 10px;font-size:.78rem}
-#loginScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:20px;text-align:center;padding:40px}
-#loginScreen .card{background:var(--card);border-radius:16px;padding:40px 48px;box-shadow:0 4px 24px #0001;max-width:440px;width:100%}
-#loginScreen h2{font-size:1.5rem;color:var(--pri);margin-bottom:8px}
-#loginScreen p{color:var(--sub);font-size:.92rem;margin-bottom:24px}
-#loadWrap{padding:60px;text-align:center}
-#progressBar{width:100%;background:#e3f2fd;border-radius:8px;height:18px;overflow:hidden;margin:12px 0}
-#progressFill{height:100%;background:linear-gradient(90deg,var(--pri2),var(--acc));border-radius:8px;transition:width .3s;width:0%}
-#loadMsg{color:var(--sub);font-size:.9rem}
-#main{display:none;padding:16px 20px;max-width:1400px;margin:0 auto}
-#yearTabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.ytab{padding:6px 18px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;font-size:.85rem;font-weight:600;color:var(--sub);transition:.2s}
-.ytab.active,.ytab:hover{background:var(--pri);color:#fff;border-color:var(--pri)}
-#kpiRow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.kpi{flex:1;min-width:160px;background:var(--card);border-radius:12px;padding:14px 18px;box-shadow:0 2px 8px #0001;border-left:4px solid var(--pri)}
-.kpi .val{font-size:1.8rem;font-weight:700;color:var(--pri)}.kpi .lbl{font-size:.8rem;color:var(--sub);margin-top:2px}
-#filterBar{background:var(--card);border-radius:12px;padding:12px 16px;margin-bottom:12px;box-shadow:0 2px 8px #0001;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-#filterBar input,#filterBar select{padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;color:var(--txt);background:#f7faff;outline:none;transition:.2s}
-#filterBar input:focus,#filterBar select:focus{border-color:var(--pri)}
-#filterBar label{font-size:.8rem;color:var(--sub);white-space:nowrap}
-.date-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-#tagWrap{min-height:28px;margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap}
-.tag{background:var(--tag-bg);border:1px solid var(--tag-br);border-radius:12px;padding:3px 10px;font-size:.78rem;color:var(--pri)}
-.tag .rm{margin-left:6px;cursor:pointer;color:#999}.tag .rm:hover{color:#e53935}
-#chartGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:18px}
-.chart-card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 2px 8px #0001}
-.chart-card h3{font-size:.9rem;color:var(--sub);margin-bottom:10px}
-.chart-card canvas{max-height:220px}
-#tblWrap{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 2px 8px #0001}
-#tblWrap h3{font-size:.9rem;color:var(--sub);margin-bottom:10px}
-#resultCount{font-size:.82rem;color:var(--sub);margin-bottom:8px}
-.tbl-scroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:.82rem}
-th{background:var(--pri);color:#fff;padding:8px 10px;text-align:left;white-space:nowrap}
-td{padding:7px 10px;border-bottom:1px solid #ecf1f8;vertical-align:top}
-tr:hover td{background:#f0f7ff}
-.badge{border-radius:10px;padding:2px 9px;font-size:.75rem;font-weight:600;white-space:nowrap}
-.b-ok{background:#e8f5e9;color:var(--ok)}.b-rej{background:#ffebee;color:var(--rej)}
-.b-pend{background:#f3e5f5;color:var(--pend)}.b-warn{background:#fff8e1;color:var(--warn)}
-a.sp-link{color:var(--pri);text-decoration:none;font-weight:600}a.sp-link:hover{text-decoration:underline}
-#pager{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px}
-#pager button{padding:4px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;font-size:.8rem}
-#pager button.active,#pager button:hover{background:var(--pri);color:#fff;border-color:var(--pri)}
-#statusBar{position:fixed;bottom:0;left:0;right:0;background:#1a2636;color:#aecde0;font-size:.78rem;padding:5px 16px;display:flex;justify-content:space-between;align-items:center;z-index:99}
-#refreshBtn{cursor:pointer;color:#90caf9}#refreshBtn:hover{color:#fff}
-#toast{position:fixed;top:70px;right:20px;background:var(--pri);color:#fff;padding:10px 18px;border-radius:10px;font-size:.85rem;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>DOHOME SharePoint</title>
+
+    <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f5f6f8;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #0067b8;
+            color: white;
+            font-size: 16px;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        #status {
+            margin-top: 20px;
+        }
+    </style>
 </head>
+
 <body>
 
-<div id="topbar">
-  <h1>&#128202; KYC Dashboard &mdash; Live SharePoint</h1>
-  <div class="actions">
-    <span id="userLabel" style="font-size:.82rem;opacity:.85"></span>
-    <button class="btn btn-white btn-sm" onclick="window.open('https://apps.powerapps.com/play/e/default-7f8918d9-718a-495b-ac9a-17cba381c4a0/a/25b58c8a-551c-494d-acbb-ea4ed16fe8cd?tenantId=7f8918d9-718a-495b-ac9a-17cba381c4a0','_blank')">&#127968; KYC App</button>
-    <button class="btn btn-outline btn-sm" onclick="forceRefresh()">&#128260; รีเฟรชข้อมูล</button>
-    <button id="logoutBtn" class="btn btn-outline btn-sm" style="display:none" onclick="doLogout()">&#128682; ออกจากระบบ</button>
-  </div>
-</div>
+    <h1>DOHOME SharePoint</h1>
 
-<div id="loginScreen">
-  <div class="card">
-    <div style="font-size:3rem;margin-bottom:8px">&#128272;</div>
-    <h2>KYC Dashboard</h2>
-    <p>เข้าสู่ระบบด้วยบัญชี Microsoft องค์กร<br>เพื่อดึงข้อมูลจาก SharePoint KYC</p>
-    <button class="btn" style="background:var(--pri);color:#fff;width:100%;padding:12px;font-size:1rem" onclick="doLogin()">
-      &#128273; Sign in with Microsoft
+    <button onclick="login()">
+        Login with Microsoft
     </button>
-    <p style="margin-top:14px;font-size:.75rem;color:#aaa">Dohome Group &middot; KYC System</p>
-  </div>
-</div>
 
-<div id="loadWrap" style="display:none">
-  <div style="max-width:500px;margin:0 auto">
-    <div style="font-size:2.5rem;margin-bottom:12px">&#9203;</div>
-    <h3 style="color:var(--pri);margin-bottom:8px">กำลังโหลดข้อมูล KYC...</h3>
-    <div id="progressBar"><div id="progressFill"></div></div>
-    <div id="loadMsg">กำลังเชื่อมต่อ SharePoint...</div>
-  </div>
-</div>
+    <div id="status"></div>
 
-<div id="main">
-  <div id="yearTabs"></div>
-  <div id="kpiRow">
-    <div class="kpi" style="border-color:#1565c0"><div class="val" id="kTotal">-</div><div class="lbl">&#128203; รายการทั้งหมด</div></div>
-    <div class="kpi" style="border-color:#2e7d32"><div class="val" id="kApprove" style="color:#2e7d32">-</div><div class="lbl">&#9989; อนุมัติ</div></div>
-    <div class="kpi" style="border-color:#c62828"><div class="val" id="kReject" style="color:#c62828">-</div><div class="lbl">&#10060; ไม่อนุมัติ</div></div>
-    <div class="kpi" style="border-color:#f57f17"><div class="val" id="kPending" style="color:#f57f17">-</div><div class="lbl">&#9203; รอดำเนินการ</div></div>
-    <div class="kpi" style="border-color:#0288d1"><div class="val" id="kApproveRate" style="color:#0288d1">-</div><div class="lbl">&#128200; อัตราอนุมัติ</div></div>
-  </div>
-  <div id="filterBar">
-    <input type="search" id="fSearch" placeholder="&#128269; ค้นหาชื่อ/เลขทะเบียน..." style="min-width:200px" oninput="applyFilter()"/>
-    <select id="fStatus" onchange="applyFilter()"><option value="">สถานะทั้งหมด</option></select>
-    <select id="fBtype" onchange="applyFilter()"><option value="">ธุรกิจทั้งหมด</option></select>
-    <select id="fProvince" onchange="applyFilter()"><option value="">จังหวัดทั้งหมด</option></select>
-    <div class="date-group">
-      <label>&#128197; ตั้งแต่</label>
-      <input type="date" id="fDateFrom" onchange="applyFilter()"/>
-      <label>ถึง</label>
-      <input type="date" id="fDateTo" onchange="applyFilter()"/>
-    </div>
-    <button class="btn btn-sm" style="background:var(--pri);color:#fff" onclick="resetAll()">&#128260; รีเซ็ต</button>
-  </div>
-  <div id="tagWrap"></div>
-  <div id="chartGrid">
-    <div class="chart-card"><h3>&#128202; สถานะ <span style="font-size:.7rem;color:#aaa">(คลิกกรอง)</span></h3><canvas id="cStatus"></canvas></div>
-    <div class="chart-card"><h3>&#127970; ประเภทธุรกิจ Top 10</h3><canvas id="cBtype"></canvas></div>
-    <div class="chart-card"><h3>&#128205; จังหวัด Top 10</h3><canvas id="cProv"></canvas></div>
-    <div class="chart-card"><h3>&#128197; รายการตามเดือน</h3><canvas id="cMonth"></canvas></div>
-    <div class="chart-card"><h3>&#128176; วงเงินสินเชื่อ Top 8</h3><canvas id="cLimit"></canvas></div>
-    <div class="chart-card"><h3>&#127974; ธนาคาร Top 8</h3><canvas id="cBank"></canvas></div>
-  </div>
-  <div id="tblWrap">
-    <h3>&#128203; รายการ KYC</h3>
-    <div id="resultCount"></div>
-    <div class="tbl-scroll">
-      <table>
-        <thead><tr>
-          <th>ID</th><th>ชื่อกิจการ</th><th>เลขทะเบียน</th>
-          <th>สถานะ</th><th>ประเภทคำขอ</th><th>ธุรกิจ</th>
-          <th>จังหวัด</th><th>วงเงิน</th><th>วันที่สร้าง</th>
-        </tr></thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-    <div id="pager"></div>
-  </div>
-</div>
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+            </tr>
+        </thead>
 
-<div id="statusBar">
-  <span id="statusTxt">ยังไม่ได้โหลดข้อมูล</span>
-  <span id="refreshBtn" onclick="forceRefresh()">&#128260; รีเฟรช</span>
-</div>
-<div id="toast"></div>
+        <tbody></tbody>
+    </table>
+
 
 <script>
-var MSAL_CONFIG={auth:{clientId:"012ac5e6-9487-4436-9e0e-246c19ab2a67",authority:"https://login.microsoftonline.com/7f8918d9-718a-495b-ac9a-17cba381c4a0",redirectUri:window.location.origin+window.location.pathname},cache:{cacheLocation:"localStorage",storeAuthStateInCookie:true}};
-var SCOPES=["https://graph.microsoft.com/Sites.Read.All"];
-var SITE_HOST="dohomegroup.sharepoint.com",SITE_PATH="/sites/KYC",LIST_NAME="KYCData1";
-var PAGE_SIZE=50,CACHE_KEY="kyc_data_cache_v7",CACHE_TTL=24*60*60*1000;
-var msalApp,account,allRows=[],filteredRows=[],curYear="all",cfilt={},curPage=1,charts={};
 
-window.addEventListener("load",async function(){
-  msalApp=new msal.PublicClientApplication(MSAL_CONFIG);
-  await msalApp.initialize();
-  try{var resp=await msalApp.handleRedirectPromise();if(resp)account=resp.account;}catch(e){}
-  if(!account){var accs=msalApp.getAllAccounts();if(accs.length>0)account=accs[0];}
-  if(account){show("loadWrap");hide("loginScreen");document.getElementById("userLabel").textContent="&#128100; "+account.name;document.getElementById("logoutBtn").style.display="inline-block";await loadData();}
-  else show("loginScreen");
-});
+const msalConfig = {
 
-function doLogin(){msalApp.loginRedirect({scopes:SCOPES});}
-function doLogout(){msalApp.logoutRedirect({postLogoutRedirectUri:window.location.href});}
+    auth: {
 
-async function getToken(){
-  try{var r=await msalApp.acquireTokenSilent({scopes:SCOPES,account:account});return r.accessToken;}
-  catch(e){var r=await msalApp.acquireTokenPopup({scopes:SCOPES});return r.accessToken;}
+        clientId:
+            "012ac5e6-9487-4436-9e0e-246c19ab2a67",
+
+        authority:
+            "https://login.microsoftonline.com/7f8918d9-718a-495b-ac9a-17cba381c4a0",
+
+        redirectUri:
+            "https://dohomepublic.github.io/sharepoint-web/"
+
+    }
+
+};
+
+
+const msalInstance =
+    new msal.PublicClientApplication(msalConfig);
+
+
+const loginRequest = {
+
+    scopes: [
+        "https://dohomegroup.sharepoint.com/AllSites.Read"
+    ]
+
+};
+
+
+async function login() {
+
+    try {
+
+        const loginResponse =
+            await msalInstance.loginPopup(loginRequest);
+
+        console.log(loginResponse);
+
+        document.getElementById("status").innerText =
+            "Login สำเร็จ กำลังโหลดข้อมูล...";
+
+        await getSharePointData();
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        document.getElementById("status").innerText =
+            "Login Error: " + error.message;
+
+    }
+
 }
 
-async function loadData(force){
-  if(!force){var c=tryCache();if(c){allRows=c;buildDashboard();return;}}
-  show("loadWrap");hide("main");setProgress(0,"กำลังเชื่อมต่อ SharePoint...");
-  try{
-    var token=await getToken();
-    var hdr={Authorization:"Bearer "+token};
-    setProgress(5,"กำลังค้นหา Site KYC...");
-    var sr=await fetch("https://graph.microsoft.com/v1.0/sites/"+SITE_HOST+":"+SITE_PATH,{headers:hdr});
-    if(!sr.ok)throw new Error("ไม่พบ Site KYC ("+sr.status+")");
-    var site=await sr.json();var siteId=site.id;
-    setProgress(10,"กำลังค้นหา List KYCData1...");
-    var lr=await fetch("https://graph.microsoft.com/v1.0/sites/"+siteId+"/lists/"+LIST_NAME,{headers:hdr});
-    if(!lr.ok)throw new Error("ไม่พบ List ("+lr.status+")");
-    var li=await lr.json();var listId=li.id;var listCount=li.list&&li.list.itemCount?li.list.itemCount:0;
-    setProgress(15,"พบ "+listCount+" รายการ กำลังโหลด...");
-    var items=[],url="https://graph.microsoft.com/v1.0/sites/"+siteId+"/lists/"+listId+"/items?expand=fields&$top=500",fetched=0;
-    do{
-      var res=await fetch(url,{headers:hdr});
-      if(!res.ok)throw new Error("โหลดล้มเหลว ("+res.status+")");
-      var data=await res.json();
-      (data.value||[]).forEach(function(i){items.push(parseItem(i));fetched++;});
-      url=data["@odata.nextLink"]||"";
-      var pct=listCount>0?Math.min(15+Math.round(fetched/listCount*80),95):50;
-      setProgress(pct,"โหลดแล้ว "+fetched.toLocaleString()+" / "+listCount.toLocaleString()+" รายการ...");
-    }while(url);
-    setProgress(100,"ประมวลผลข้อมูล...");
-    allRows=items;saveCache(items);buildDashboard();
-  }catch(e){
-    console.error(e);
-    document.getElementById("loadMsg").innerHTML='<span style="color:#c62828">&#10060; '+e.message+'</span><br><button class="btn btn-sm" style="margin-top:12px;background:var(--pri);color:#fff" onclick="doLogin()">&#128273; Login ใหม่</button>';
-  }
+
+async function getSharePointData() {
+
+    try {
+
+        const accounts =
+            msalInstance.getAllAccounts();
+
+        const account = accounts[0];
+
+        const tokenResponse =
+            await msalInstance.acquireTokenSilent({
+
+                ...loginRequest,
+
+                account: account
+
+            });
+
+
+        const apiUrl =
+            "https://dohomegroup.sharepoint.com/sites/KYC" +
+            "/_api/web/GetList('/sites/KYC/Lists/Master_TambonThai')" +
+            "/items?$top=100";
+
+
+        const response =
+            await fetch(apiUrl, {
+
+                method: "GET",
+
+                headers: {
+
+                    "Authorization":
+                        "Bearer " +
+                        tokenResponse.accessToken,
+
+                    "Accept":
+                        "application/json;odata=nometadata"
+
+                }
+
+            });
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "SharePoint API Error: " +
+                response.status
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        console.log(data);
+
+
+        const tbody =
+            document.querySelector("#dataTable tbody");
+
+
+        tbody.innerHTML = "";
+
+
+        data.value.forEach(item => {
+
+            const row =
+                document.createElement("tr");
+
+
+            row.innerHTML = `
+
+                <td>
+                    ${item.Id ?? ""}
+                </td>
+
+                <td>
+                    ${item.Title ?? ""}
+                </td>
+
+            `;
+
+
+            tbody.appendChild(row);
+
+        });
+
+
+        document.getElementById("status").innerText =
+            "โหลดข้อมูลสำเร็จ: " +
+            data.value.length +
+            " รายการ";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        document.getElementById("status").innerText =
+            "เกิดข้อผิดพลาด: " +
+            error.message;
+
+    }
+
 }
 
-function parseItem(i){
-  var f=i.fields||{};
-  function cl(v){return v?String(v).replace(/;#/g,"").trim():"";}
-  var created=f.Created?f.Created.substring(0,10):"";
-  var yearCE=created?parseInt(created.substring(0,4)):0;
-  return{id:parseInt(i.id)||0,title:cl(f.Title),reg:cl(f.registration_number),status:cl(f.Status),type_req:cl(f.Type_Request),btype:cl(f.business_type),province:cl(f.province),limit:cl(f.limit),income:cl(f.Estimated_annual_income),bank1:cl(f.bank_name1||f.bank1||""),created:created,yearCE:yearCE,yearBE:yearCE?yearCE+543:0,month:created?created.substring(0,7):""};
-}
-
-function saveCache(rows){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),rows:rows}));}catch(e){}}
-function tryCache(){try{var s=localStorage.getItem(CACHE_KEY);if(!s)return null;var o=JSON.parse(s);if(Date.now()-o.ts>CACHE_TTL)return null;toast("&#128230; โหลดจาก Cache ("+new Date(o.ts).toLocaleString("th-TH")+")");return o.rows;}catch(e){return null;}}
-async function forceRefresh(){localStorage.removeItem(CACHE_KEY);show("loadWrap");hide("main");await loadData(true);}
-
-function buildDashboard(){
-  hide("loadWrap");show("main");
-  document.getElementById("logoutBtn").style.display="inline-block";
-  var years=[...new Set(allRows.map(function(r){return r.yearBE;}).filter(function(y){return y>0;}))].sort(function(a,b){return b-a;});
-  var recentYear=years[0]||2569;curYear=String(recentYear);
-  var tabsEl=document.getElementById("yearTabs");
-  tabsEl.innerHTML='<span class="ytab" data-y="all" onclick="setYear('all')">&#128203; ทั้งหมด</span>'+years.map(function(y){return '<span class="ytab'+(y==recentYear?" active":"")+'" data-y="'+y+'" onclick="setYear(''+y+'')">'+y+'</span>';}).join("");
-  populateSel("fStatus",[...new Set(allRows.map(function(r){return r.status;}).filter(Boolean))].sort());
-  populateSel("fBtype",[...new Set(allRows.map(function(r){return r.btype;}).filter(Boolean))].sort());
-  populateSel("fProvince",[...new Set(allRows.map(function(r){return r.province;}).filter(Boolean))].sort());
-  var ts=new Date().toLocaleString("th-TH");
-  document.getElementById("statusTxt").textContent="&#9989; โหลด "+allRows.length.toLocaleString()+" รายการ - อัพเดท "+ts;
-  applyFilter();
-  setInterval(function(){var s=localStorage.getItem(CACHE_KEY);if(!s)return;var o=JSON.parse(s);if(Date.now()-o.ts>CACHE_TTL){toast("&#128260; แคชหมดอายุ กำลังรีเฟรช...");forceRefresh();}},60*60*1000);
-}
-
-function setYear(y){curYear=y;cfilt={};curPage=1;document.querySelectorAll(".ytab").forEach(function(t){t.classList.toggle("active",t.dataset.y===y);});document.getElementById("fDateFrom").value="";document.getElementById("fDateTo").value="";applyFilter();}
-
-function applyFilter(){
-  var q=(document.getElementById("fSearch").value||"").toLowerCase();
-  var fSt=document.getElementById("fStatus").value;
-  var fBt=document.getElementById("fBtype").value;
-  var fPr=document.getElementById("fProvince").value;
-  var fDf=document.getElementById("fDateFrom").value;
-  var fDt=document.getElementById("fDateTo").value;
-  filteredRows=allRows.filter(function(r){
-    if(curYear!=="all"&&String(r.yearBE)!==curYear)return false;
-    if(q&&!(r.title.toLowerCase().includes(q)||r.reg.toLowerCase().includes(q)))return false;
-    if(fSt&&r.status!==fSt)return false;
-    if(fBt&&r.btype!==fBt)return false;
-    if(fPr&&r.province!==fPr)return false;
-    if(fDf&&r.created&&r.created<fDf)return false;
-    if(fDt&&r.created&&r.created>fDt)return false;
-    if(cfilt.status&&r.status!==cfilt.status)return false;
-    if(cfilt.btype&&r.btype!==cfilt.btype)return false;
-    if(cfilt.province&&r.province!==cfilt.province)return false;
-    if(cfilt.month&&r.month!==cfilt.month)return false;
-    if(cfilt.bank1&&r.bank1!==cfilt.bank1)return false;
-    return true;
-  });
-  curPage=1;updateKPI();updateCharts();updateTable();updateTags();
-}
-
-function resetAll(){cfilt={};curPage=1;["fSearch","fDateFrom","fDateTo"].forEach(function(id){document.getElementById(id).value="";});["fStatus","fBtype","fProvince"].forEach(function(id){document.getElementById(id).selectedIndex=0;});applyFilter();}
-
-function updateKPI(){
-  var rows=filteredRows,total=rows.length;
-  var approve=rows.filter(function(r){return r.status==="Approve";}).length;
-  var reject=rows.filter(function(r){return /reject|ไม่อนุมัติ/i.test(r.status);}).length;
-  document.getElementById("kTotal").textContent=total.toLocaleString();
-  document.getElementById("kApprove").textContent=approve.toLocaleString();
-  document.getElementById("kReject").textContent=reject.toLocaleString();
-  document.getElementById("kPending").textContent=(total-approve-reject).toLocaleString();
-  document.getElementById("kApproveRate").textContent=total>0?(approve/total*100).toFixed(1)+"%":"-";
-}
-
-var COLORS=["#1565c0","#0288d1","#00897b","#43a047","#fb8c00","#e53935","#8e24aa","#3949ab","#00acc1","#7cb342"];
-function countBy(rows,key,top){
-  var m={};rows.forEach(function(r){var v=r[key]||"(ไม่ระบุ)";m[v]=(m[v]||0)+1;});
-  var arr=Object.entries(m).sort(function(a,b){return b[1]-a[1];});
-  if(top>0)arr=arr.slice(0,top);
-  return{labels:arr.map(function(a){return a[0];}),data:arr.map(function(a){return a[1];})};
-}
-function mkChart(id,type,labels,data,colors,clickKey){
-  if(charts[id])charts[id].destroy();
-  var ctx=document.getElementById(id).getContext("2d");
-  charts[id]=new Chart(ctx,{type:type,data:{labels:labels,datasets:[{data:data,backgroundColor:Array.isArray(colors)?colors:data.map(function(_,i){return COLORS[i%COLORS.length];}),borderColor:"#fff",borderWidth:1}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:type==="bar"?"top":"right",labels:{font:{size:11},boxWidth:12}}},onClick:function(e,els){if(!els.length||!clickKey)return;var label=labels[els[0].index];if(cfilt[clickKey]===label)delete cfilt[clickKey];else cfilt[clickKey]=label;applyFilter();}}});
-}
-function updateCharts(){
-  var rows=filteredRows;
-  var st=countBy(rows,"status");
-  var stColors=st.labels.map(function(l){return l==="Approve"?"#2e7d32":/reject|ไม่อนุมัติ/i.test(l)?"#c62828":/รอ/i.test(l)?"#f57f17":"#6a1b9a";});
-  mkChart("cStatus","doughnut",st.labels,st.data,stColors,"status");
-  var bt=countBy(rows,"btype",10);mkChart("cBtype","bar",bt.labels,bt.data,null,"btype");
-  var pv=countBy(rows,"province",10);mkChart("cProv","bar",pv.labels,pv.data,null,"province");
-  var mn=countBy(rows,"month");
-  var sortedM=Object.entries(mn.labels.reduce(function(a,l,i){a[l]=mn.data[i];return a;},{})).sort(function(a,b){return a[0].localeCompare(b[0]);});
-  mkChart("cMonth","bar",sortedM.map(function(a){return a[0];}),sortedM.map(function(a){return a[1];}),COLORS[0],"month");
-  var li=countBy(rows,"limit",8);mkChart("cLimit","bar",li.labels,li.data,null,"limit");
-  var bk=countBy(rows,"bank1",8);mkChart("cBank","bar",bk.labels,bk.data,null,"bank1");
-}
-
-var SP_BASE="https://dohomegroup.sharepoint.com/sites/KYC/Lists/KYCData1/DispForm.aspx?ID=";
-function statusBadge(s){var cls=s==="Approve"?"b-ok":/reject|ไม่อนุมัติ/i.test(s)?"b-rej":/รอ/i.test(s)?"b-warn":"b-pend";return '<span class="badge '+cls+'">'+( s||"-")+"</span>";}
-function updateTable(){
-  var rows=filteredRows,total=rows.length,pages=Math.ceil(total/PAGE_SIZE)||1;
-  if(curPage>pages)curPage=1;
-  var start=(curPage-1)*PAGE_SIZE,end=Math.min(start+PAGE_SIZE,total),slice=rows.slice(start,end);
-  document.getElementById("resultCount").textContent="แสดง "+(start+1).toLocaleString()+" - "+end.toLocaleString()+" จาก "+total.toLocaleString()+" รายการ";
-  document.getElementById("tbody").innerHTML=slice.map(function(r){return "<tr><td><a class='sp-link' href='"+SP_BASE+r.id+"' target='_blank'>"+r.id+"</a></td><td>"+(r.title||"-")+"</td><td>"+(r.reg||"-")+"</td><td>"+statusBadge(r.status)+"</td><td>"+(r.type_req||"-")+"</td><td>"+(r.btype||"-")+"</td><td>"+(r.province||"-")+"</td><td>"+(r.limit||"-")+"</td><td>"+(r.created||"-")+"</td></tr>";}).join("");
-  var pg="";
-  pg+='<button '+(curPage<=1?"disabled":"")+' onclick="goPage('+(curPage-1)+')">&#9664;</button>';
-  var s=Math.max(1,curPage-2),e=Math.min(pages,s+4);
-  if(s>1)pg+='<button onclick="goPage(1)">1</button>'+(s>2?"<span>...</span>":"");
-  for(var i=s;i<=e;i++)pg+='<button class="'+(i===curPage?"active":"")+'" onclick="goPage('+i+')">'+i+"</button>";
-  if(e<pages)pg+=(e<pages-1?"<span>...</span>":"")+'<button onclick="goPage('+pages+')">'+pages+"</button>";
-  pg+='<button '+(curPage>=pages?"disabled":"")+' onclick="goPage('+(curPage+1)+')">&#9654;</button>';
-  pg+='<span style="font-size:.78rem;color:var(--sub);margin-left:8px">ทั้งหมด '+pages+" หน้า</span>";
-  document.getElementById("pager").innerHTML=pg;
-}
-function goPage(p){curPage=p;updateTable();window.scrollTo(0,document.getElementById("tblWrap").offsetTop-60);}
-
-var CF_LABEL={status:"สถานะ",btype:"ธุรกิจ",province:"จังหวัด",month:"เดือน",bank1:"ธนาคาร",limit:"วงเงิน"};
-function updateTags(){
-  var tags=Object.entries(cfilt).filter(function(e){return e[1];}).map(function(e){return '<span class="tag">'+(CF_LABEL[e[0]]||e[0])+": <b>"+e[1]+'</b> <span class="rm" onclick="delete cfilt[''+e[0]+''];applyFilter()">&#10005;</span></span>';});
-  var df=document.getElementById("fDateFrom").value,dt=document.getElementById("fDateTo").value;
-  if(df)tags.push('<span class="tag">ตั้งแต่: <b>'+df+'</b> <span class="rm" onclick="document.getElementById('fDateFrom').value='';applyFilter()">&#10005;</span></span>');
-  if(dt)tags.push('<span class="tag">ถึง: <b>'+dt+'</b> <span class="rm" onclick="document.getElementById('fDateTo').value='';applyFilter()">&#10005;</span></span>');
-  document.getElementById("tagWrap").innerHTML=tags.join("");
-}
-
-function show(id){document.getElementById(id).style.display="block";}
-function hide(id){document.getElementById(id).style.display="none";}
-function setProgress(pct,msg){document.getElementById("progressFill").style.width=pct+"%";document.getElementById("loadMsg").textContent=msg;}
-function populateSel(id,vals){var sel=document.getElementById(id);var first=sel.options[0].outerHTML;sel.innerHTML=first+vals.map(function(v){return "<option value='"+v+"'>"+v+"</option>";}).join("");}
-function toast(msg,dur){var el=document.getElementById("toast");el.textContent=msg;el.style.opacity="1";setTimeout(function(){el.style.opacity="0";},dur||2500);}
 </script>
+
 </body>
 </html>
