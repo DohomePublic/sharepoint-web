@@ -16,7 +16,7 @@ TENANT_ID     = os.environ.get('AZURE_TENANT_ID', '')
 CLIENT_SECRET = os.environ.get('AZURE_CLIENT_SECRET', '')
 SITE_HOST     = 'dohomegroup.sharepoint.com'
 SITE_PATH     = '/sites/KYC'
-LIST_NAME     = 'KYCData1'
+LIST_NAME     = 'KYC-Data'
 POWERAPPS_URL = (
     'https://apps.powerapps.com/play/e/'
     'default-7f8918d9-718a-495b-ac9a-17cba381c4a0/'
