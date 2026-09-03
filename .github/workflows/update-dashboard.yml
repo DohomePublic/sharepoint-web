@@ -11,18 +11,31 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+      # ── 1. Checkout ───────────────────────────────────────────────────────
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # ── 2. Python ─────────────────────────────────────────────────────────
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # ── 3. Install dependencies ───────────────────────────────────────────
       - name: Install dependencies
         run: pip install requests
 
+      # ── 4. Verify script exists ───────────────────────────────────────────
+      - name: Verify script path
+        run: |
+          echo "=== Listing scripts/ ==="
+          ls -la scripts/
+          echo "=== Python version ==="
+          python --version
+
+      # ── 5. Build dashboard ────────────────────────────────────────────────
       - name: Build dashboard
         env:
           AZURE_CLIENT_ID:     ${{ secrets.AZURE_CLIENT_ID }}
@@ -30,10 +43,23 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: python scripts/build_dashboard.py
 
+      # ── 6. Verify output ──────────────────────────────────────────────────
+      - name: Verify index.html was generated
+        run: |
+          if [ ! -f index.html ]; then
+            echo "[ERROR] index.html was not generated!"
+            exit 1
+          fi
+          SIZE=$(wc -c < index.html)
+          echo "[OK] index.html size: ${SIZE} bytes"
+
+      # ── 7. Commit & push ──────────────────────────────────────────────────
       - name: Commit & push index.html
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --staged --quiet || git commit -m "chore: update KYC dashboard $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git diff --staged --quiet \
+            && echo "[SKIP] No changes to commit" \
+            || git commit -m "chore: update KYC dashboard $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
