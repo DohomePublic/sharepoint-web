@@ -2,8 +2,8 @@ name: Update KYC Dashboard
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # 07:00 Thai time (UTC+7) = 00:00 UTC
-  workflow_dispatch:       # รัน manual ได้จาก Actions tab
+    - cron: '0 0 * * *'   # ทุกวัน 07:00 น. เวลาไทย (00:00 UTC)
+  workflow_dispatch:        # กดรันเองได้จาก GitHub UI
 
 permissions:
   contents: write
@@ -11,55 +11,29 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      # ── 1. Checkout ───────────────────────────────────────────────────────
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # ── 2. Python ─────────────────────────────────────────────────────────
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # ── 3. Install dependencies ───────────────────────────────────────────
       - name: Install dependencies
         run: pip install requests
 
-      # ── 4. Verify script exists ───────────────────────────────────────────
-      - name: Verify script path
-        run: |
-          echo "=== Listing scripts/ ==="
-          ls -la scripts/
-          echo "=== Python version ==="
-          python --version
-
-      # ── 5. Build dashboard ────────────────────────────────────────────────
-      - name: Build dashboard
+      - name: Fetch SharePoint data & build dashboard
         env:
-          AZURE_CLIENT_ID:     ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID:     ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: python scripts/build_dashboard.py
 
-      # ── 6. Verify output ──────────────────────────────────────────────────
-      - name: Verify index.html was generated
+      - name: Commit and push updated dashboard
         run: |
-          if [ ! -f index.html ]; then
-            echo "[ERROR] index.html was not generated!"
-            exit 1
-          fi
-          SIZE=$(wc -c < index.html)
-          echo "[OK] index.html size: ${SIZE} bytes"
-
-      # ── 7. Commit & push ──────────────────────────────────────────────────
-      - name: Commit & push index.html
-        run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --staged --quiet \
-            && echo "[SKIP] No changes to commit" \
-            || git commit -m "chore: update KYC dashboard $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git diff --staged --quiet || git commit -m "Auto-update KYC Dashboard $(date +'%Y-%m-%d %H:%M UTC')"
           git push
