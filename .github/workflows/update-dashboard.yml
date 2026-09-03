@@ -2,8 +2,8 @@ name: Update KYC Dashboard
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # ทุกวัน 07:00 น. เวลาไทย (00:00 UTC)
-  workflow_dispatch:        # กดรันเองได้จาก GitHub UI
+    - cron: '0 0 * * *'   # 07:00 Thai time (UTC+7) = 00:00 UTC
+  workflow_dispatch:       # รัน manual ได้จาก Actions tab
 
 permissions:
   contents: write
@@ -23,17 +23,17 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Fetch SharePoint data & build dashboard
+      - name: Build dashboard
         env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID:     ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID:     ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         run: python scripts/build_dashboard.py
 
-      - name: Commit and push updated dashboard
+      - name: Commit & push index.html
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git diff --staged --quiet || git commit -m "Auto-update KYC Dashboard $(date +'%Y-%m-%d %H:%M UTC')"
+          git diff --staged --quiet || git commit -m "chore: update KYC dashboard $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
