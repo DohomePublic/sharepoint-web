@@ -1,39 +1,99 @@
-name: Update KYC Dashboard
+name: Update Dashboard
+
+# ─────────────────────────────────────────────────────────────
+# ดึงข้อมูลจาก SharePoint List (DemoApp + Admin_KycNew)
+# แล้ว build index.html ใหม่ → commit → deploy GitHub Pages
+# ─────────────────────────────────────────────────────────────
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # ทุกวัน 07:00 น. เวลาไทย (00:00 UTC)
-  workflow_dispatch:        # กดรันเองได้จาก GitHub UI
+    # ทุก 30 นาที ระหว่าง 00:00–13:00 UTC = 07:00–20:00 เวลาไทย (จ.-ศ.)
+    - cron: "0,30 0-13 * * 1-5"
+    # รอบสรุปสิ้นวัน 21:00 เวลาไทย
+    - cron: "0 14 * * 1-5"
+  workflow_dispatch:          # กดรันเองได้จากแท็บ Actions
+    inputs:
+      mask_pii:
+        description: "ปิดบังข้อมูลส่วนบุคคล (ใช้เมื่อ Pages เป็น public)"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - ".github/workflows/update-dashboard.yml"
 
 permissions:
-  contents: write
+  contents: write             # ใช้ commit index.html กลับเข้า repo
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-dashboard
+  cancel-in-progress: false   # ห้ามยกเลิกกลางคัน กัน index.html พัง
 
 jobs:
   build:
+    name: Build dashboard from SharePoint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install requests
+      # build_dashboard.py ใช้เฉพาะ standard library — ไม่ต้องติดตั้ง dependency
+      - name: Verify script syntax
+        run: python -m py_compile scripts/build_dashboard.py
 
-      - name: Fetch SharePoint data & build dashboard
+      - name: Build index.html from SharePoint
         env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        run: python scripts/build_dashboard.py
-
-      - name: Commit and push updated dashboard
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SITE_HOSTNAME: ${{ vars.SITE_HOSTNAME || 'dohomegroup.sharepoint.com' }}
+          SITE_PATH: ${{ vars.SITE_PATH || '/sites/AC-Accounting' }}
+          LIST_DEMOAPP: ${{ vars.LIST_DEMOAPP || 'DemoApp' }}
+          LIST_ACL: ${{ vars.LIST_ACL || 'Admin_KycNew' }}
+          MASK_PII: ${{ inputs.mask_pii }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git diff --staged --quiet || git commit -m "Auto-update KYC Dashboard $(date +'%Y-%m-%d %H:%M UTC')"
-          git push
+          python scripts/build_dashboard.py --out index.html --min-records 1
+          echo "--- ตรวจผลลัพธ์ ---"
+          test -s index.html
+          grep -q "RAW_DATA" index.html
+          grep -q "ACL_REGISTRY" index.html
+          wc -c index.html
+
+      - name: Commit & push if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- index.html; then
+            echo "ℹ️ ข้อมูลไม่เปลี่ยนแปลง — ไม่ต้อง commit"
+          else
+            git add index.html
+            git commit -m "chore(data): update dashboard $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+            echo "✅ อัปเดต index.html แล้ว"
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
